@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QR Code Generator</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            padding: 40px;
+            max-width: 600px;
+            width: 100%;
+        }
+
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 2em;
+        }
+
+        .form-group {
+            margin-bottom: 25px;
+        }
+
+        label {
+            display: block;
+            color: #555;
+            font-weight: 600;
+            margin-bottom: 8px;
+            font-size: 0.95em;
+        }
+
+        input[type="text"],
+        input[type="number"],
+        textarea {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            font-size: 1em;
+            transition: border-color 0.3s;
+            font-family: inherit;
+        }
+
+        input[type="text"]:focus,
+        input[type="number"]:focus,
+        textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        textarea {
+            resize: vertical;
+            min-height: 80px;
+        }
+
+        .size-info {
+            color: #777;
+            font-size: 0.85em;
+            margin-top: 5px;
+        }
+
+        button {
+            width: 100%;
+            padding: 15px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 1.1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(102, 126, 234, 0.4);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        #qrcodeResult {
+            margin-top: 30px;
+            text-align: center;
+            display: none;
+        }
+
+        #qrcodeResult.show {
+            display: block;
+        }
+
+        #qrcodeImage {
+            max-width: 100%;
+            border-radius: 10px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            margin: 20px 0;
+        }
+
+        .download-btn {
+            background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+            margin-top: 15px;
+        }
+
+        .download-btn:hover {
+            box-shadow: 0 10px 25px rgba(17, 153, 142, 0.4);
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            margin-top: 20px;
+        }
+
+        .loading.show {
+            display: block;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔲 QR Code Generator</h1>
+        
+        <form id="qrcodeForm">
+            <div class="form-group">
+                <label for="data">QR Code Content:</label>
+                <textarea id="data" placeholder="Type text, URL, or any content..." required></textarea>
+            </div>
+
+            <div class="form-group">
+                <label for="size">Image Size (pixels):</label>
+                <input type="number" id="size" value="500" min="100" max="2000" step="50" required>
+                <div class="size-info">Recommended: 300–1000 pixels</div>
+            </div>
+
+            <div class="form-group">
+                <label for="filename">File Name:</label>
+                <input type="text" id="filename" value="qrcode.png" required>
+            </div>
+
+            <button type="submit">Generate QR Code</button>
+        </form>
+
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <p style="margin-top: 10px; color: #667eea;">Generating QR Code...</p>
+        </div>
+
+        <div id="qrcodeResult">
+            <h2 style="color: #333; margin-bottom: 15px;">✅ QR Code Generated!</h2>
+            <img id="qrcodeImage" alt="QR Code">
+            <button class="download-btn" id="downloadBtn">⬇️ Download QR Code</button>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <script>
+        const form = document.getElementById('qrcodeForm');
+        const loading = document.getElementById('loading');
+        const result = document.getElementById('qrcodeResult');
+        const qrcodeImage = document.getElementById('qrcodeImage');
+        const downloadBtn = document.getElementById('downloadBtn');
+
+        form.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const data = document.getElementById('data').value;
+            const size = parseInt(document.getElementById('size').value);
+            const filename = document.getElementById('filename').value;
+
+            loading.classList.add('show');
+            result.classList.remove('show');
+
+            const tempDiv = document.createElement('div');
+            document.body.appendChild(tempDiv);
+
+            new QRCode(tempDiv, {
+                text: data,
+                width: size,
+                height: size,
+                colorDark: "#000000",
+                colorLight: "#ffffff",
+                correctLevel: QRCode.CorrectLevel.H
+            });
+
+            setTimeout(() => {
+                const canvas = tempDiv.querySelector('canvas');
+                const imageUrl = canvas.toDataURL('image/png');
+                
+                qrcodeImage.src = imageUrl;
+                loading.classList.remove('show');
+                result.classList.add('show');
+
+                document.body.removeChild(tempDiv);
+
+                downloadBtn.onclick = function() {
+                    const link = document.createElement('a');
+                    link.download = filename;
+                    link.href = imageUrl;
+                    link.click();
+                };
+            }, 500);
+        });
+
+        document.getElementById('data').value = 'https://github.com/KalilMassignaniDaRosa';
+    </script>
+</body>
+</html>
